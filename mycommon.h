@@ -5,7 +5,7 @@
 #define QUEUE_TYPE                          unsigned char
 #define MSG                                 QUEUE_TYPE
 
-#define N_MSG                               1       	//  no click
+#define N_MSG                               1           //  no click
 #define N_KEY                               N_MSG   	//  no MSG
 #define S_KEY                               2       	//  single click        
 #define D_KEY                               3       	//  double click        
