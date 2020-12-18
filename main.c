@@ -38,7 +38,7 @@
 * with the restriction that this Disclaimer and Copyright notice must be
 * included with each copy of this software, whether used in part or whole,
 * at all times.
-*/
+*/ 
 /******************************************************************************/
 /** \file main.c
  **
@@ -57,7 +57,7 @@
 #include "hc32f005.h"
 #include "sysctrl.h"
 #include "stdint.h"
-
+   
 #include "adt.h"
 #include "flash.h"
 #include "mycommon.h"
@@ -92,53 +92,69 @@
  * Function implementation - global ('extern') and local ('static')
  ******************************************************************************/
  
-#define LED1PORT	GpioPort2       //GpioPort1 //GpioPort0
-#define LED1PIN		GpioPin5        //GpioPin4	//GpioPin1
-#define LED2PORT	GpioPort2       //GpioPort2 //GpioPort0//
-#define LED2PIN		GpioPin4        //GpioPin4 //GpioPin2//
-#define KEYPORT		GpioPort3
-#define KEYPIN		GpioPin6
-#define MOTOR_PORT	GpioPort3
-#define MOTOR_PIN	GpioPin5
-#define USB_PORT	GpioPort1
-#define USB_PIN		GpioPin5
-#define CHR_PORT	GpioPort1
-#define CHR_PIN		GpioPin4
-#define T_CHE_PORT  GpioPort2
-#define T_CHE_PIN   GpioPin6
-#define PWM_PORT    GpioPort3                    //GpioPort3,GpioPin4,GpioAf5
-#define PWM_PIN     GpioPin2                    //
-#define PWM_AFX     GpioAf3
-#define PWM_TIMX    M0P_ADTIM6                  //PWM_TIMX M0P_ADTIM4
-#define PWM_CHX     GCMBR
-#define PWM_CMPX    AdtCompareB
-#define PWM_AdtCHx  AdtCHxB                     //GCMAR
-#define ADC_CHx     AdcExInputCH4
+#define LED1PORT	                        GpioPort2       //GpioPort1 //GpioPort0
+#define LED1PIN		                        GpioPin5        //GpioPin4	//GpioPin1
+#define LED2PORT	                        GpioPort2       //GpioPort2 //GpioPort0//
+#define LED2PIN		                        GpioPin4        //GpioPin4 //GpioPin2//
+#define KEYPORT		                        GpioPort3
+#define KEYPIN		                        GpioPin6
+#define MOTOR_PORT	                        GpioPort3
+#define MOTOR_PIN	                        GpioPin5
+#define USB_PORT	                        GpioPort1
+#define USB_PIN		                        GpioPin5
+#define CHR_PORT	                        GpioPort1
+#define CHR_PIN		                        GpioPin4
+#define T_CHE_PORT                          GpioPort2
+#define T_CHE_PIN                           GpioPin6
+#define PWM_PORT                            GpioPort3       //GpioPort3,GpioPin4,GpioAf5
+#define PWM_PIN                             GpioPin2                        
+#define PWM_AFX                             GpioAf3
+#define PWM_TIMX                            M0P_ADTIM6      //PWM_TIMX M0P_ADTIM4
+#define PWM_CHX                             GCMBR
+#define PWM_CMPX                            AdtCompareB
+#define PWM_AdtCHx                          AdtCHxB         //GCMAR
+#define ADC_CHx                             AdcExInputCH4
+#define KEY_STATE_0                         0           
+#define KEY_STATE_1                         1
+#define KEY_STATE_2                         2
+#define KEY_STATE_3                         3
+#define KEY_STATE_4                         4
+#define KEY_STATE_5                         5
+#define KEY_STATE_6                         6
+#define SINGLE_KEY_TIME                     3       	    //  SINGLE_KEY_TIME*10MS = 30MS  
+#define KEY_INTERVAL                        40      	    //  KEY_INTERVAL*10MS    = 400MS 
+#define LONG_KEY_TIME                       100      	    //  LONG_KEY_TIME*10MS   = 600mS 
+#define TIM_1S                              1000
+#define VOLTAGE_L	                        3300
+#define adcLen	                            4
 
-#define VOLTAGE_L	3300
+static uint16_t         index           = 0;
+static uint16_t         adcResult_Temp[adcLen]={0}; 
+static uint32_t         adcResult_Sum   = 0;
+static uint16_t         adcAve          = 0;
+static uint16_t         bFullFlag       = 0;
 
-#define adcLen	4
-static uint16_t index = 0;
-static uint16_t adcResult_Temp[adcLen]={0}; 
-static uint32_t adcResult_Sum = 0;
-static uint16_t adcAve = 0;
-static uint16_t bFullFlag = 0;
-
-
-typedef struct {
-	int flag;
-	int cnt;
-	int MaxCnt;
-} MOTORFLAG;
+unsigned char 			g1MS_Cnt  		= 0;
+unsigned char 			g100MS_Cnt		= 0;
+unsigned char 			g200MS_Cnt		= 0;
+unsigned char 			g500MS_Cnt		= 0;
+unsigned char 			g1000MS_Cnt		= 0;
+volatile unsigned char 	gFlag10ms		= 0;
+volatile unsigned char 	gFlag100ms		= 0;
+volatile unsigned char 	gFlag200ms		= 0;
+volatile unsigned char 	gFlag500ms		= 0;
+volatile unsigned char 	gFlag1000ms		= 0;
+volatile unsigned long  gTime0Count  	= 0;
+unsigned long  			gstartTime	  	= 0;
 MOTORFLAG gMotor;
 static volatile uint32_t u32BtTestFlag = 0;
 static volatile uint32_t u32Cnt = 0;
 
-static void App_LedInit(void);
+void App_LedInit(void);
 void iniPwm(void);
 void iniTemperature(void);
 void delay(uint32_t u32Cnt);
-static void _UartBaudCfg(void);
+void _UartBaudCfg(void);
 void Led1On(void);
 void Led1Off(void);
 void Led2On(void);
@@ -148,12 +164,14 @@ void sendStr(char* pStr);
 void sendIntStr(int num);
 void getBatVol(void);
 void blink_LedALL(int num);
+void testLed(void);
+void testPwm(void);
 
 void Timer_Init(void)
 {
-	stc_bt_cfg_t   		stcCfg;
+	stc_bt_cfg_t   	  stcCfg;
     en_result_t       enResult = Error;
-    uint16_t          u16ArrData = 0xFE88; //0x8000;
+    uint16_t          u16ArrData = 0xFE88;
     uint16_t          u16InitCntData = 0xFE88;
     
     Sysctrl_SetPeripheralGate(SysctrlPeripheralBt, TRUE);
@@ -199,8 +217,6 @@ void App_AdvTimerInit(uint16_t u16Period, uint16_t u16CHA_PWMDuty, uint16_t u16C
     en_adt_compare_t          enAdtCompareA;
     en_adt_compare_t          enAdtCompareB;
 	en_adt_compare_t          enAdtCompareX;
-
-
     stc_adt_basecnt_cfg_t     stcAdtBaseCntCfg;
     stc_adt_CHxX_port_cfg_t   stcAdtTIMACfg;
     stc_adt_CHxX_port_cfg_t   stcAdtTIMBCfg;
@@ -209,53 +225,37 @@ void App_AdvTimerInit(uint16_t u16Period, uint16_t u16CHA_PWMDuty, uint16_t u16C
     DDL_ZERO_STRUCT(stcAdtBaseCntCfg);
     DDL_ZERO_STRUCT(stcAdtTIMACfg);
     DDL_ZERO_STRUCT(stcAdtTIMBCfg);
-    DDL_ZERO_STRUCT(stcAdtTIMXCfg);
-    
+    DDL_ZERO_STRUCT(stcAdtTIMXCfg);    
 
-    Sysctrl_SetPeripheralGate(SysctrlPeripheralAdvTim, TRUE);       //ADT外设时钟使能
+    Sysctrl_SetPeripheralGate(SysctrlPeripheralAdvTim, TRUE);
     
-    stcAdtBaseCntCfg.enCntMode = AdtSawtoothMode;                   //锯齿波模式
+    stcAdtBaseCntCfg.enCntMode = AdtSawtoothMode;
     stcAdtBaseCntCfg.enCntDir = AdtCntDown;
     stcAdtBaseCntCfg.enCntClkDiv = AdtClkPClk0Div1024;
     
-    Adt_Init(PWM_TIMX, &stcAdtBaseCntCfg);                        //ADT载波、计数模式、时钟配置
-    
-    Adt_SetPeriod(PWM_TIMX, u16Period);                           //周期设置
-    
-//    enAdtCompareA = AdtCompareA;
-//    Adt_SetCompareValue(PWM_TIMX, enAdtCompareA, u16CHA_PWMDuty);  //通用比较基准值寄存器A设置
-    
-//    enAdtCompareB = AdtCompareB;
-//    Adt_SetCompareValue(PWM_TIMX, enAdtCompareB, u16CHB_PWMDuty);  //通用比较基准值寄存器B设置
+    Adt_Init(PWM_TIMX, &stcAdtBaseCntCfg);    
+    Adt_SetPeriod(PWM_TIMX, u16Period);    
 	enAdtCompareX = PWM_CMPX;
-	Adt_SetCompareValue(PWM_TIMX, enAdtCompareX, u16CHA_PWMDuty);  //通用比较基准值寄存器A设置		
+	Adt_SetCompareValue(PWM_TIMX, enAdtCompareX, u16CHA_PWMDuty);
     
-    stcAdtTIMXCfg.enCap = AdtCHxCompareOutput;            	    //比较输出
-    stcAdtTIMXCfg.bOutEn = TRUE;                          	    //CHA输出使能
-    stcAdtTIMXCfg.enPerc = AdtCHxPeriodLow;               	    //计数值与周期匹配时CHA电平保持不变
-    stcAdtTIMXCfg.enCmpc = AdtCHxCompareInv;             	    //CHx端口输出设定为高电平   //计数值与比较值A匹配时，CHA电平翻转
-    stcAdtTIMXCfg.enStaStp = AdtCHxStateSelSS;            	    //CHA起始结束电平由STACA与STPCA控制
-    stcAdtTIMXCfg.enStaOut = AdtCHxPortOutLow;                  //AdtCHxPortOutHigh;            //CHA起始电平为低
-    stcAdtTIMXCfg.enStpOut = AdtCHxPortOutLow;            	    //CHA结束电平为低
-    Adt_CHxXPortCfg(PWM_TIMX, PWM_AdtCHx, &stcAdtTIMXCfg);  	//端口CHA配置    
+    stcAdtTIMXCfg.enCap = AdtCHxCompareOutput;
+    stcAdtTIMXCfg.bOutEn = TRUE;
+    stcAdtTIMXCfg.enPerc = AdtCHxPeriodLow;
+    stcAdtTIMXCfg.enCmpc = AdtCHxCompareInv;
+    stcAdtTIMXCfg.enStaStp = AdtCHxStateSelSS;
+    stcAdtTIMXCfg.enStaOut = AdtCHxPortOutLow;
+    stcAdtTIMXCfg.enStpOut = AdtCHxPortOutLow;
+    Adt_CHxXPortCfg(PWM_TIMX, PWM_AdtCHx, &stcAdtTIMXCfg);
 }
 
 void App_AdvTimerPortInit(void)
 {
-    stc_gpio_cfg_t         stcTIM4Port;
-    
-    DDL_ZERO_STRUCT(stcTIM4Port);
-    
-    Sysctrl_SetPeripheralGate(SysctrlPeripheralGpio, TRUE); //端口外设时钟使能
-    
+    stc_gpio_cfg_t         stcTIM4Port;    
+    DDL_ZERO_STRUCT(stcTIM4Port);    
+    Sysctrl_SetPeripheralGate(SysctrlPeripheralGpio, TRUE);    
     stcTIM4Port.enDir  = GpioDirOut;
-    //P34设置为TIM4_CHA
-    Gpio_Init(PWM_PORT, PWM_PIN, &stcTIM4Port);           //PWM_PORT
+    Gpio_Init(PWM_PORT, PWM_PIN, &stcTIM4Port);
     Gpio_SetAfMode(PWM_PORT,PWM_PIN,PWM_AFX);
-
-    //P35设置为TIM4_CHB
-    //Gpio_Init(GpioPort3, GpioPin5, &stcTIM4Port);
-    //Gpio_SetAfMode(GpioPort3,GpioPin5,GpioAf5);  
 }
 
 void LED_Init(void)
@@ -274,16 +274,6 @@ void LED_Init(void)
 	delay(1000);
 	Led1Off();
 	Led2Off();
-/*
-    Gpio_Init(GpioPort3, GpioPin2, &stcGpioCfg);
-    Gpio_WriteOutputIO(GpioPort3, GpioPin2, TRUE);
-    while(1)
-    {
-       delay(1000);
-       Gpio_WriteOutputIO(GpioPort3, GpioPin2, TRUE);
-       delay(1000);
-       Gpio_WriteOutputIO(GpioPort3, GpioPin2, FALSE);
-    };*/
 }
 
 void Key_Init(void)
@@ -298,68 +288,49 @@ void Key_Init(void)
     Gpio_Init(KEYPORT, KEYPIN, &stcGpioCfg); 
 }
 
-#define KEY_STATE_0                         0           
-#define KEY_STATE_1                         1
-#define KEY_STATE_2                         2
-#define KEY_STATE_3                         3
-#define KEY_STATE_4                         4
-#define KEY_STATE_5                         5
-#define KEY_STATE_6                         6
-
-#define SINGLE_KEY_TIME                     3       	//  SINGLE_KEY_TIME*10MS = 30MS  
-#define KEY_INTERVAL                        40      	//  KEY_INTERVAL*10MS    = 400MS 
-#define LONG_KEY_TIME                       100      	//  LONG_KEY_TIME*10MS   = 600mS 
-#define TIM_1S                              1000
-
-
-
-
 unsigned char key_driver(void) 
 {     
     static unsigned char key_state = 0;
     static unsigned int  key_time = 0;
     unsigned char key_press, key_return; 
 
-    key_return = N_KEY;                         //  ?? ?????
+    key_return = N_KEY;
 
     key_press = Gpio_GetInputIO(KEYPORT, KEYPIN);
 
     switch (key_state)     
     {       
-        case KEY_STATE_0:                       //  ????0:????????
-            if (!key_press)                     //  ?????
+        case KEY_STATE_0:
+            if (!key_press)
             {
-                key_time = 0;                   //  ????????
-                key_state = KEY_STATE_1;        //  ???? ????1
+                key_time = 0;
+                key_state = KEY_STATE_1;
             }        
             break;
-        case KEY_STATE_1:                       //  ????1:????(????????,?????)????????:????????????????
+        case KEY_STATE_1:
             if (!key_press)                     
             {
-                key_time++;                     //  ??10ms
-                if(key_time>=SINGLE_KEY_TIME)   //  ?????:SINGLE_KEY_TIME*10ms = 30ms;
+                key_time++;
+                if(key_time>=SINGLE_KEY_TIME)
                 {
-                    key_state = KEY_STATE_2;    //  ???????? ????,????????????????????:??????,?? ????2, ?????????????
+                    key_state = KEY_STATE_2;
                 }
             }         
-            else key_state = KEY_STATE_0;       //  ??????????,?????,????,?? ????0,??????
+            else key_state = KEY_STATE_0;
             break;
-        case KEY_STATE_2:                       //  ????2:?????????:???,????
-            if(key_press)                       //  ????? ??????? ???,??????
+        case KEY_STATE_2:
+            if(key_press)
             { 
-                 key_return = S_KEY;            //  ?? ?????:??
-                 key_state = KEY_STATE_0;       //  ?? ????0,??????
+                 key_return = S_KEY;
+                 key_state = KEY_STATE_0;
             } 
             else
             {
-                key_time++;                     
-
-                if(key_time >= LONG_KEY_TIME)   //  ???????? ???????(LONG_KEY_TIME*10ms=300*10ms=3000ms), ???? ??
+                key_time++;
+                if(key_time >= LONG_KEY_TIME)
                 {
-                    key_return = L_KEY;         //  ?? ?????:??
-                    key_state = KEY_STATE_3;    //  ???3,??????
-                    //sendMsg(L_KEY);
-                    //Led1On();
+                    key_return = L_KEY;
+                    key_state = KEY_STATE_3;                    
                 }
             }
             break;
@@ -485,33 +456,11 @@ unsigned char key_read(void)
 
 static uint16_t u16AdcResult;
 static uint16_t u16AdcResult_Temp;
-
 stc_adc_cfg_t      stcAdcCfg;
 stc_adc_norm_cfg_t stcAdcNormCfg; 
 
 void iniBatVol(void)
-{/*
-	stc_gpio_cfg_t stcGpioCfg;
-    Sysctrl_SetPeripheralGate(SysctrlPeripheralGpio, TRUE);
-    stcGpioCfg.enDir = GpioDirOut;
-    stcGpioCfg.enPu = GpioPuDisable;
-    stcGpioCfg.enPd = GpioPdDisable;
-    Gpio_Init(GpioPort1, GpioPin4, &stcGpioCfg);
-	Gpio_WriteOutputIO(GpioPort1, GpioPin4, FALSE);
-	Sysctrl_SetPeripheralGate(SysctrlPeripheralGpio, TRUE);
-    Sysctrl_SetPeripheralGate(SysctrlPeripheralAdcBgr, TRUE);
-
-	/////////////////
-	Sysctrl_SetPeripheralGate(SysctrlPeripheralGpio, TRUE);
-
-    Gpio_SetAnalogMode(GpioPort2, GpioPin4);
-    Gpio_SetAnalogMode(GpioPort2, GpioPin6);*/
-	/////////////////
-
-
-	/////////////////
-    
-    //ADC??
+{
     Sysctrl_SetPeripheralGate(SysctrlPeripheralAdcBgr, TRUE);
     Adc_Enable();
     Bgr_BgrEnable();   
@@ -548,8 +497,7 @@ void iniUart(void)
 {
 	stc_gpio_cfg_t stcGpioCfg;
     DDL_ZERO_STRUCT(stcGpioCfg);	
-    Sysctrl_SetPeripheralGate(SysctrlPeripheralGpio,TRUE); //??GPIO????
-//Sysctrl_SetFunc(SysctrlEXTHEn,FALSE);
+    Sysctrl_SetPeripheralGate(SysctrlPeripheralGpio,TRUE);
     ///<TX
     stcGpioCfg.enDir = GpioDirOut;
     Gpio_Init(GpioPort0, GpioPin1, &stcGpioCfg);	
@@ -557,8 +505,8 @@ void iniUart(void)
     ///<RX
     stcGpioCfg.enDir = GpioDirIn;
     Gpio_Init(GpioPort0, GpioPin2, &stcGpioCfg);	
-	Gpio_SetAfMode(GpioPort0, GpioPin1, GpioAf3);          //??P01 ???URART1_RX
-    Gpio_SetAfMode(GpioPort0, GpioPin2, GpioAf3);          //??P02 ???URART1_TX
+	Gpio_SetAfMode(GpioPort0, GpioPin1, GpioAf3);
+    Gpio_SetAfMode(GpioPort0, GpioPin2, GpioAf3);
 
 	stc_uart_cfg_t  stcCfg;
     _UartBaudCfg();
@@ -688,28 +636,10 @@ void App_Init(void)
 	state = standby;
 }
 
-unsigned char 			g1MS_Cnt  		= 0;
-unsigned char 			g100MS_Cnt		= 0;
-unsigned char 			g200MS_Cnt		= 0;
-unsigned char 			g500MS_Cnt		= 0;
-unsigned char 			g1000MS_Cnt		= 0;
-volatile unsigned char 	gFlag10ms		= 0;
-volatile unsigned char 	gFlag100ms		= 0;
-volatile unsigned char 	gFlag200ms		= 0;
-volatile unsigned char 	gFlag500ms		= 0;
-volatile unsigned char 	gFlag1000ms		= 0;
-volatile unsigned long  gTime0Count  	= 0;
-unsigned long  			gstartTime	  	= 0;
-
-
-void testLed(void);
-
 void changePwmDuty(uint16_t u16CHX_PWMDuty)
 {
 	PWM_TIMX->PWM_CHX = u16CHX_PWMDuty;
 }
-
-void testPwm(void);
 
 void delay(uint32_t u32Cnt)
 {
@@ -870,7 +800,6 @@ void closeTemperature(void)
 	Gpio_WriteOutputIO(T_CHE_PORT, T_CHE_PIN, TRUE);
 }
 
-
 void checkTemperature(void)
 {	
 	getBatVol();
@@ -908,7 +837,6 @@ void checkTemperature(void)
 		adcAve = adcResult_Sum/index;
 	}
 }
-
 
 void getBatVol(void)
 {
@@ -1091,8 +1019,6 @@ void scan(void)
 */
 		sendStr("targetA=");
 		sendIntStr(targetA);
- //       sendStr("VCC=");
-//		sendIntStr(vcc);
 		switch(state)
 		{
 			case sleepD:
@@ -1268,8 +1194,6 @@ void standbyfun(void)
 			}			
 			break;
         case T_KEY:
-            //state = debug;
-			//Led2On();
 			targetA += 33;
 			if(targetA > targetA_base + 33*1)
 			{
@@ -1286,9 +1210,6 @@ void standbyfun(void)
             break;
     }
 }
-
-
-
 
 void preHeatfun(void)
 {
@@ -1462,108 +1383,70 @@ void chargefun(void)
 
 void testFun(void)								
 {
-//	int i=0;
-//	Itoa(18656,10);
-//	while(outstr[i])
-//	{
-//		Uart_SendDataPoll(M0P_UART1,outstr[i++]);
-//		delay(1);		
-//	}		
 	sendStr("66 ha ha !\r\n");
 	sendIntStr(12546);
 }
 	
 int32_t main(void)
 {    
-		App_Init();
-//			u16CHX_PWMDuty = 0;
-//			setPwmDuty();
-//			startPwm();
+	App_Init();
     while(1)
     {
-//			Uart_SendDataPoll(M0P_UART1,'W');
-//			delay(1);
-//			Uart_SendDataPoll(M0P_UART1,'D');
-//			delay(1);
-//			testFun();
-		//if(Gpio_GetInputIO(KEYPORT, KEYPIN)==0)
-		//{
-		//	testLed();
-		//}
-		//else
-		//{
-			//testLed();
-			//Uart_SendDataPoll(M0P_UART1,'A');
-			//delay(1);
-			
-		//}
-//		u16CHX_PWMDuty+=1;
-//		if(u16CHX_PWMDuty>0x99)
-//		{
-//			u16CHX_PWMDuty=0;			
-//		}
-//		setPwmDuty();			
-//		delay(1000);
-		
-    scan();
-	msg=getMsg();
-	switch(state)
-    {
-        case standby:
-            standbyfun();
-            break;
-        case preHeat:
-            preHeatfun();
-            break;
-		case smk:
-            smkfun();
-            break;
-        case debug:
-            debugfun();
-            break;
-		case upgrade:
-			upgradefun();
-			break;
-		case sleep:
-			sleepfun();
-			break;
-		case charge:
-			chargefun();
-			break;
-        default:
-            break;
-    }	
+        scan();
+    	msg=getMsg();
+    	switch(state)
+        {
+            case standby:
+                standbyfun();
+                break;
+            case preHeat:
+                preHeatfun();
+                break;
+    		case smk:
+                smkfun();
+                break;
+            case debug:
+                debugfun();
+                break;
+    		case upgrade:
+    			upgradefun();
+    			break;
+    		case sleep:
+    			sleepfun();
+    			break;
+    		case charge:
+    			chargefun();
+    			break;
+            default:
+                break;
+        }	
     }
 }
 
 static void _UartBaudCfg(void)
 {
     uint16_t timer=0;
-
     stc_uart_baud_cfg_t stcBaud;
     stc_bt_cfg_t stcBtCfg;
-
     DDL_ZERO_STRUCT(stcBaud);
     DDL_ZERO_STRUCT(stcBtCfg);
-
-    //??????
-    Sysctrl_SetPeripheralGate(SysctrlPeripheralBt,TRUE);//??0/2?????
+    
+    Sysctrl_SetPeripheralGate(SysctrlPeripheralBt,TRUE);
     Sysctrl_SetPeripheralGate(SysctrlPeripheralUart1,TRUE);
 
-    stcBaud.bDbaud  = 1u;//???????
-    stcBaud.u32Baud = 19200u;//???????
-    stcBaud.enMode  = UartMode1; //???????????
-    stcBaud.u32Pclk = Sysctrl_GetPClkFreq(); //??PCLK
+    stcBaud.bDbaud  = 1u;
+    stcBaud.u32Baud = 19200u;
+    stcBaud.enMode  = UartMode1;
+    stcBaud.u32Pclk = Sysctrl_GetPClkFreq();
     timer = Uart_SetBaudRate(M0P_UART1, &stcBaud);
 
     stcBtCfg.enMD = BtMode2;
     stcBtCfg.enCT = BtTimer;
-    Bt_Init(TIM1, &stcBtCfg);//??basetimer1?????????
+    Bt_Init(TIM1, &stcBtCfg);
     Bt_ARRSet(TIM1,timer);
     Bt_Cnt16Set(TIM1,timer);
     Bt_Run(TIM1);
 }
-
 
 void debugfun(void)
 {
@@ -1571,9 +1454,6 @@ void debugfun(void)
 	{
 		case T_KEY:
 			Led2Off();
-//			Sysctrl_SetFunc(SysctrlSWDUseIOEn,TRUE);			
-//			Uart_SendDataPoll(M0P_UART0,'A');
-//			Uart_SendDataPoll(M0P_UART0,'B');
 			state = standby;
 			sendStr("debugfun\r\n");
 			break;
@@ -1599,9 +1479,6 @@ void upgradefun(void)
 }
 
 #undef adcLen
-
-
-
 
 /******************************************************************************
  * EOF (not truncated)

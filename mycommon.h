@@ -41,6 +41,12 @@ typedef enum {
     upgrade,
 } STATE;
 
+typedef struct {
+	int flag;
+	int cnt;
+	int MaxCnt;
+} MOTORFLAG;
+
 extern unsigned char            	msg;
 extern char   	                	front;
 extern char   	                	rear;
