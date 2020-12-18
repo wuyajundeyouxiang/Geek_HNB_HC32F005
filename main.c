@@ -106,6 +106,14 @@
 #define CHR_PIN		GpioPin4
 #define T_CHE_PORT  GpioPort2
 #define T_CHE_PIN   GpioPin6
+#define PWM_PORT    GpioPort3                    //GpioPort3,GpioPin4,GpioAf5
+#define PWM_PIN     GpioPin2                    //
+#define PWM_AFX     GpioAf3
+#define PWM_TIMX    M0P_ADTIM6                  //PWM_TIMX M0P_ADTIM4
+#define PWM_CHX     GCMBR
+#define PWM_CMPX    AdtCompareB
+#define PWM_AdtCHx  AdtCHxB                     //GCMAR
+#define ADC_CHx     AdcExInputCH4
 
 #define VOLTAGE_L	3300
 
@@ -190,49 +198,46 @@ void App_AdvTimerInit(uint16_t u16Period, uint16_t u16CHA_PWMDuty, uint16_t u16C
 {
     en_adt_compare_t          enAdtCompareA;
     en_adt_compare_t          enAdtCompareB;
+	en_adt_compare_t          enAdtCompareX;
+
 
     stc_adt_basecnt_cfg_t     stcAdtBaseCntCfg;
-    stc_adt_CHxX_port_cfg_t   stcAdtTIM4ACfg;
-    stc_adt_CHxX_port_cfg_t   stcAdtTIM4BCfg;
+    stc_adt_CHxX_port_cfg_t   stcAdtTIMACfg;
+    stc_adt_CHxX_port_cfg_t   stcAdtTIMBCfg;
+    stc_adt_CHxX_port_cfg_t   stcAdtTIMXCfg;
     
     DDL_ZERO_STRUCT(stcAdtBaseCntCfg);
-    DDL_ZERO_STRUCT(stcAdtTIM4ACfg);
-    DDL_ZERO_STRUCT(stcAdtTIM4BCfg);
+    DDL_ZERO_STRUCT(stcAdtTIMACfg);
+    DDL_ZERO_STRUCT(stcAdtTIMBCfg);
+    DDL_ZERO_STRUCT(stcAdtTIMXCfg);
     
 
-    Sysctrl_SetPeripheralGate(SysctrlPeripheralAdvTim, TRUE);    //ADT外设时钟使能
+    Sysctrl_SetPeripheralGate(SysctrlPeripheralAdvTim, TRUE);       //ADT外设时钟使能
     
-    stcAdtBaseCntCfg.enCntMode = AdtSawtoothMode;                 //锯齿波模式
+    stcAdtBaseCntCfg.enCntMode = AdtSawtoothMode;                   //锯齿波模式
     stcAdtBaseCntCfg.enCntDir = AdtCntDown;
     stcAdtBaseCntCfg.enCntClkDiv = AdtClkPClk0Div1024;
     
-    Adt_Init(M0P_ADTIM4, &stcAdtBaseCntCfg);                      //ADT载波、计数模式、时钟配置
+    Adt_Init(PWM_TIMX, &stcAdtBaseCntCfg);                        //ADT载波、计数模式、时钟配置
     
-    Adt_SetPeriod(M0P_ADTIM4, u16Period);                         //周期设置
+    Adt_SetPeriod(PWM_TIMX, u16Period);                           //周期设置
     
-    enAdtCompareA = AdtCompareA;
-    Adt_SetCompareValue(M0P_ADTIM4, enAdtCompareA, u16CHA_PWMDuty);  //通用比较基准值寄存器A设置
+//    enAdtCompareA = AdtCompareA;
+//    Adt_SetCompareValue(PWM_TIMX, enAdtCompareA, u16CHA_PWMDuty);  //通用比较基准值寄存器A设置
     
 //    enAdtCompareB = AdtCompareB;
-//    Adt_SetCompareValue(M0P_ADTIM4, enAdtCompareB, u16CHB_PWMDuty);  //通用比较基准值寄存器B设置
+//    Adt_SetCompareValue(PWM_TIMX, enAdtCompareB, u16CHB_PWMDuty);  //通用比较基准值寄存器B设置
+	enAdtCompareX = PWM_CMPX;
+	Adt_SetCompareValue(PWM_TIMX, enAdtCompareX, u16CHA_PWMDuty);  //通用比较基准值寄存器A设置		
     
-    stcAdtTIM4ACfg.enCap = AdtCHxCompareOutput;            	//比较输出
-    stcAdtTIM4ACfg.bOutEn = TRUE;                          	//CHA输出使能
-    stcAdtTIM4ACfg.enPerc = AdtCHxPeriodLow;               	//计数值与周期匹配时CHA电平保持不变
-    stcAdtTIM4ACfg.enCmpc = AdtCHxCompareInv;             	//CHx端口输出设定为高电平   //计数值与比较值A匹配时，CHA电平翻转
-    stcAdtTIM4ACfg.enStaStp = AdtCHxStateSelSS;            	//CHA起始结束电平由STACA与STPCA控制
-    stcAdtTIM4ACfg.enStaOut = AdtCHxPortOutLow;//AdtCHxPortOutHigh;            //CHA起始电平为低
-    stcAdtTIM4ACfg.enStpOut = AdtCHxPortOutLow;            	//CHA结束电平为低
-    Adt_CHxXPortCfg(M0P_ADTIM4, AdtCHxA, &stcAdtTIM4ACfg);  //端口CHA配置
-    
-//    stcAdtTIM4BCfg.enCap = AdtCHxCompareOutput;
-//    stcAdtTIM4BCfg.bOutEn = FALSE;//TRUE;
-//    stcAdtTIM4BCfg.enPerc = AdtCHxPeriodInv;
-//    stcAdtTIM4BCfg.enCmpc = AdtCHxCompareInv;
-//    stcAdtTIM4BCfg.enStaStp = AdtCHxStateSelSS;
-//    stcAdtTIM4BCfg.enStaOut = AdtCHxPortOutLow;
-//    stcAdtTIM4BCfg.enStpOut = AdtCHxPortOutLow;
-//    Adt_CHxXPortCfg(M0P_ADTIM4, AdtCHxB, &stcAdtTIM4BCfg);    //端口CHB配置
+    stcAdtTIMXCfg.enCap = AdtCHxCompareOutput;            	    //比较输出
+    stcAdtTIMXCfg.bOutEn = TRUE;                          	    //CHA输出使能
+    stcAdtTIMXCfg.enPerc = AdtCHxPeriodLow;               	    //计数值与周期匹配时CHA电平保持不变
+    stcAdtTIMXCfg.enCmpc = AdtCHxCompareInv;             	    //CHx端口输出设定为高电平   //计数值与比较值A匹配时，CHA电平翻转
+    stcAdtTIMXCfg.enStaStp = AdtCHxStateSelSS;            	    //CHA起始结束电平由STACA与STPCA控制
+    stcAdtTIMXCfg.enStaOut = AdtCHxPortOutLow;                  //AdtCHxPortOutHigh;            //CHA起始电平为低
+    stcAdtTIMXCfg.enStpOut = AdtCHxPortOutLow;            	    //CHA结束电平为低
+    Adt_CHxXPortCfg(PWM_TIMX, PWM_AdtCHx, &stcAdtTIMXCfg);  	//端口CHA配置    
 }
 
 void App_AdvTimerPortInit(void)
@@ -245,12 +250,12 @@ void App_AdvTimerPortInit(void)
     
     stcTIM4Port.enDir  = GpioDirOut;
     //P34设置为TIM4_CHA
-    Gpio_Init(GpioPort3, GpioPin4, &stcTIM4Port);
-    Gpio_SetAfMode(GpioPort3,GpioPin4,GpioAf5);
+    Gpio_Init(PWM_PORT, PWM_PIN, &stcTIM4Port);           //PWM_PORT
+    Gpio_SetAfMode(PWM_PORT,PWM_PIN,PWM_AFX);
 
     //P35设置为TIM4_CHB
- //   Gpio_Init(GpioPort3, GpioPin5, &stcTIM4Port);
- //   Gpio_SetAfMode(GpioPort3,GpioPin5,GpioAf5);  
+    //Gpio_Init(GpioPort3, GpioPin5, &stcTIM4Port);
+    //Gpio_SetAfMode(GpioPort3,GpioPin5,GpioAf5);  
 }
 
 void LED_Init(void)
@@ -259,7 +264,7 @@ void LED_Init(void)
 	Sysctrl_SetPeripheralGate(SysctrlPeripheralGpio, TRUE);    
 	stcGpioCfg.enDir = GpioDirOut;
 	stcGpioCfg.enPu = GpioPuDisable;
-	stcGpioCfg.enPd = GpioPuDisable;    
+	stcGpioCfg.enPd = GpioPdDisable;    
 	Gpio_Init(LED1PORT, LED1PIN, &stcGpioCfg);	
 	Gpio_Init(LED2PORT, LED2PIN, &stcGpioCfg);
 	Led1On();
@@ -268,7 +273,17 @@ void LED_Init(void)
 	//delay1ms(1000);
 	delay(1000);
 	Led1Off();
-	Led2Off();	
+	Led2Off();
+/*
+    Gpio_Init(GpioPort3, GpioPin2, &stcGpioCfg);
+    Gpio_WriteOutputIO(GpioPort3, GpioPin2, TRUE);
+    while(1)
+    {
+       delay(1000);
+       Gpio_WriteOutputIO(GpioPort3, GpioPin2, TRUE);
+       delay(1000);
+       Gpio_WriteOutputIO(GpioPort3, GpioPin2, FALSE);
+    };*/
 }
 
 void Key_Init(void)
@@ -689,9 +704,9 @@ unsigned long  			gstartTime	  	= 0;
 
 void testLed(void);
 
-void changePwmDuty(uint16_t u16CHA_PWMDuty)
+void changePwmDuty(uint16_t u16CHX_PWMDuty)
 {
-	M0P_ADTIM4->GCMAR = u16CHA_PWMDuty;
+	PWM_TIMX->PWM_CHX = u16CHX_PWMDuty;
 }
 
 void testPwm(void);
@@ -839,7 +854,7 @@ void iniTemperature(void)
     stcAdcCfg.enAdcTrig1Sel = AdcTrigDisable;
     Adc_Init(&stcAdcCfg);
 
-	stcAdcNormCfg.enAdcNormModeCh = AdcExInputCH1;
+	stcAdcNormCfg.enAdcNormModeCh = ADC_CHx;//AdcExInputCH4;//AdcExInputCH2;
     stcAdcNormCfg.bAdcResultAccEn = FALSE;
     Adc_ConfigNormMode(&stcAdcCfg, &stcAdcNormCfg);
     ///////////////////
@@ -847,12 +862,12 @@ void iniTemperature(void)
 
 void openTemperature(void)
 {
-	Gpio_WriteOutputIO(GpioPort3, GpioPin5, FALSE);
+	Gpio_WriteOutputIO(T_CHE_PORT, T_CHE_PIN, FALSE);
 }
 
 void closeTemperature(void)
 {
-	Gpio_WriteOutputIO(GpioPort3, GpioPin5, TRUE);
+	Gpio_WriteOutputIO(T_CHE_PORT, T_CHE_PIN, TRUE);
 }
 
 
@@ -861,7 +876,7 @@ void checkTemperature(void)
 	getBatVol();
 	
 	openTemperature();
-	stcAdcNormCfg.enAdcNormModeCh = AdcExInputCH1;
+	stcAdcNormCfg.enAdcNormModeCh = ADC_CHx;
     stcAdcNormCfg.bAdcResultAccEn = FALSE;
     Adc_ConfigNormMode(&stcAdcCfg, &stcAdcNormCfg);
 	
@@ -915,7 +930,7 @@ unsigned long A = 0;
 unsigned long B = 0;
 unsigned long U = 0;
 unsigned long I = 0;
-volatile  uint16_t u16CHA_PWMDuty = 0;
+volatile  uint16_t u16CHX_PWMDuty = 0;
 void setPwmDuty(void);
 //
 #define targetA_base		1313	////1310//1346//1900//1313//1800//1400//1700//1900	//2000	//1120			// 6000
@@ -926,8 +941,8 @@ void adjustStep(int step)
 {
 	if(regR > targetA)
 	{
-		if(u16CHA_PWMDuty>step)
-			u16CHA_PWMDuty-=step;
+		if(u16CHX_PWMDuty>step)
+			u16CHX_PWMDuty-=step;
 		state = smk;
 		Led1Off();
 		Led2On();
@@ -935,10 +950,10 @@ void adjustStep(int step)
 	}				
 	else
 	{
-		u16CHA_PWMDuty+=step;
-		if(u16CHA_PWMDuty > 0x98)
+		u16CHX_PWMDuty+=step;
+		if(u16CHX_PWMDuty > 0x98)
 		{
-			u16CHA_PWMDuty = 0x98;
+			u16CHX_PWMDuty = 0x98;
 		}				
 	}	
 }
@@ -965,21 +980,21 @@ void scan(void)
 		{
 			if(regR > targetA)
 			{
-				if(u16CHA_PWMDuty>DELTA_SMK)
-					u16CHA_PWMDuty-=DELTA_SMK;
+				if(u16CHX_PWMDuty>DELTA_SMK)
+					u16CHX_PWMDuty-=DELTA_SMK;
 			}				
 			else
 			{
-				u16CHA_PWMDuty+=DELTA_SMK;
-				if(u16CHA_PWMDuty > 0x98/4*3)
+				u16CHX_PWMDuty+=DELTA_SMK;
+				if(u16CHX_PWMDuty > 0x98/4*3)
 				{
-					u16CHA_PWMDuty = 0x98/4*3;
+					u16CHX_PWMDuty = 0x98/4*3;
 				}
 			}	
 			sendStr("X regR=");
 			sendIntStr(regR);
-//			u16CHA_PWMDuty = constDuty; 					// jackie
-			M0P_ADTIM4->GCMAR = u16CHA_PWMDuty;	
+//			u16CHX_PWMDuty = constDuty; 					// jackie
+			PWM_TIMX->PWM_CHX = u16CHX_PWMDuty;	
 		}					
 	} 
 
@@ -1019,8 +1034,8 @@ void scan(void)
 		  		
 			if(regR > targetA && gTime0Count - gstartTime > 10000)					//&& gTime0Count - gstartTime > 10000
 			{
-				if(u16CHA_PWMDuty>DELTA_PRE)
-					u16CHA_PWMDuty-=DELTA_PRE;
+				if(u16CHX_PWMDuty>DELTA_PRE)
+					u16CHX_PWMDuty-=DELTA_PRE;
 				state = smk;
 				if(gMotor.flag==0)
 				{
@@ -1035,21 +1050,21 @@ void scan(void)
 			}				
 			else	
 			{
-				u16CHA_PWMDuty+=DELTA_PRE;
-				if(u16CHA_PWMDuty > 150)
+				u16CHX_PWMDuty+=DELTA_PRE;
+				if(u16CHX_PWMDuty > 150)
 				{
-					u16CHA_PWMDuty = 150;
+					u16CHX_PWMDuty = 150;
 				}				
 			}
 			
 			sendStr("regR =");
 			sendIntStr(regR);
 			sendStr("PERAR =");
-			sendIntStr(M0P_ADTIM4->PERAR);
-//			u16CHA_PWMDuty = constDuty; // jackie
-			M0P_ADTIM4->GCMAR = u16CHA_PWMDuty;
-			sendStr("GCMAR =");
-			sendIntStr(M0P_ADTIM4->GCMAR);
+			sendIntStr(PWM_TIMX->PERAR);
+//			u16CHX_PWMDuty = constDuty;                                 // jackie
+			PWM_TIMX->PWM_CHX = u16CHX_PWMDuty;
+			sendStr("PWM_CHX =");
+			sendIntStr(PWM_TIMX->PWM_CHX);
     	}
 	}		
 
@@ -1076,6 +1091,8 @@ void scan(void)
 */
 		sendStr("targetA=");
 		sendIntStr(targetA);
+ //       sendStr("VCC=");
+//		sendIntStr(vcc);
 		switch(state)
 		{
 			case sleepD:
@@ -1131,22 +1148,22 @@ void iniPwm(void)
 
 void startPwm(void)
 {
-	Adt_StartCount(M0P_ADTIM4);
+	Adt_StartCount(PWM_TIMX);
 }
 
 void stopPwm(void)
 {
-	Adt_StopCount(M0P_ADTIM4);
+	Adt_StopCount(PWM_TIMX);
 }
 
 void setPwmDuty(void)
 {	
-	M0P_ADTIM4->GCMAR = u16CHA_PWMDuty;
+	PWM_TIMX->PWM_CHX = u16CHX_PWMDuty;
 }
 
 void clrPwmDuty()
 {
-	M0P_ADTIM4->GCMAR = 0;
+	PWM_TIMX->PWM_CHX = 0;
 }
 
 void blink_LedALL(int num)
@@ -1239,7 +1256,7 @@ void standbyfun(void)
 					sendStr("gMotor open");
 				}				
 				gstartTime = gTime0Count;
-				u16CHA_PWMDuty = 72;
+				u16CHX_PWMDuty = 72;
 				setIniCheckTemp();
 				setPwmDuty();
 				startPwm();
@@ -1459,7 +1476,7 @@ void testFun(void)
 int32_t main(void)
 {    
 		App_Init();
-//			u16CHA_PWMDuty = 0;
+//			u16CHX_PWMDuty = 0;
 //			setPwmDuty();
 //			startPwm();
     while(1)
@@ -1480,10 +1497,10 @@ int32_t main(void)
 			//delay(1);
 			
 		//}
-//		u16CHA_PWMDuty+=1;
-//		if(u16CHA_PWMDuty>0x99)
+//		u16CHX_PWMDuty+=1;
+//		if(u16CHX_PWMDuty>0x99)
 //		{
-//			u16CHA_PWMDuty=0;			
+//			u16CHX_PWMDuty=0;			
 //		}
 //		setPwmDuty();			
 //		delay(1000);
