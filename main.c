@@ -92,18 +92,21 @@
  * Function implementation - global ('extern') and local ('static')
  ******************************************************************************/
  
-#define LED1PORT	GpioPort1//GpioPort1 //GpioPort0
-#define LED1PIN		GpioPin4//GpioPin4	//GpioPin1
-#define LED2PORT	GpioPort2//GpioPort2 //GpioPort0//
-#define LED2PIN		GpioPin4//GpioPin4 //GpioPin2//
-#define KEYPORT		GpioPort1
-#define KEYPIN		GpioPin5
+#define LED1PORT	GpioPort2       //GpioPort1 //GpioPort0
+#define LED1PIN		GpioPin5        //GpioPin4	//GpioPin1
+#define LED2PORT	GpioPort2       //GpioPort2 //GpioPort0//
+#define LED2PIN		GpioPin4        //GpioPin4 //GpioPin2//
+#define KEYPORT		GpioPort3
+#define KEYPIN		GpioPin6
 #define MOTOR_PORT	GpioPort3
-#define MOTOR_PIN	GpioPin6
-#define USB_PORT	GpioPort3
-#define USB_PIN		GpioPin2
-#define CHR_PORT	GpioPort2
-#define CHR_PIN		GpioPin3
+#define MOTOR_PIN	GpioPin5
+#define USB_PORT	GpioPort1
+#define USB_PIN		GpioPin5
+#define CHR_PORT	GpioPort1
+#define CHR_PIN		GpioPin4
+#define T_CHE_PORT  GpioPort2
+#define T_CHE_PIN   GpioPin6
+
 #define VOLTAGE_L	3300
 
 #define adcLen	4
@@ -818,10 +821,10 @@ void iniTemperature(void)
     stcGpioCfg.enPu = GpioPuDisable;
     stcGpioCfg.enPd = GpioPdDisable;    
 
-    Gpio_Init(GpioPort3, GpioPin5, &stcGpioCfg);
-	Gpio_WriteOutputIO(GpioPort3, GpioPin5, TRUE);
+    Gpio_Init(T_CHE_PORT, T_CHE_PIN, &stcGpioCfg);
+	Gpio_WriteOutputIO(T_CHE_PORT, T_CHE_PIN, TRUE);//       GpioPort3   GpioPin5
 
-//////////////////
+    //////////////////
 	Sysctrl_SetPeripheralGate(SysctrlPeripheralAdcBgr, TRUE);  //ADCBGR ??????
     Adc_Enable();
     Bgr_BgrEnable();   
@@ -839,7 +842,7 @@ void iniTemperature(void)
 	stcAdcNormCfg.enAdcNormModeCh = AdcExInputCH1;
     stcAdcNormCfg.bAdcResultAccEn = FALSE;
     Adc_ConfigNormMode(&stcAdcCfg, &stcAdcNormCfg);
-///////////////////
+    ///////////////////
 }
 
 void openTemperature(void)
